@@ -1,0 +1,17 @@
+[package]
+name = "aptos-intent"
+version = "1.0.0"
+authors = []
+
+[addresses]
+aptos_intent = "_"
+
+[dev-addresses]
+aptos_intent = "0x123"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "main"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dev-dependencies]
