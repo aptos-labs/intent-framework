@@ -1,0 +1,24 @@
+name: Publish Check
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  testnet-autodeploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Check and Publish
+        uses: jillxuu/aptos-testnet-deploy@master
+        with:
+          package_dir: intent-framework
+          check_address: "0x9754f2024c3cc3d1a13d2c5e3c79fccc4b50a4cfc93265f0665e2b24d701059f"
+          named_addresses: module_addr=0x9754f2024c3cc3d1a13d2c5e3c79fccc4b50a4cfc93265f0665e2b24d701059f
+          private_key: ${{ secrets.PRIVATE_KEY }}
+          upgrade_allowed: true
