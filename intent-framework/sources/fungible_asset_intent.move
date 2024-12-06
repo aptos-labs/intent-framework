@@ -80,7 +80,7 @@ module aptos_intent::fungible_asset_intent {
         desired_metadata: Object<Metadata>,
         desired_amount: u64,
         expiry_time: u64,
-        issuer: address,
+        _issuer: address,
     ) {
         let fa = primary_fungible_store::withdraw(account, source_metadata, source_amount);
         create_fa_to_fa_intent(
@@ -96,13 +96,17 @@ module aptos_intent::fungible_asset_intent {
         intent: Object<TradeIntent<FungibleStoreManager, Args>>
     ): (FungibleAsset, TradeSession<Args>) {
         let (store_manager, session) = intent::start_intent_session(intent);
+        (destroy_store_manager(store_manager), session)
+    }
+
+    fun destroy_store_manager(store_manager: FungibleStoreManager): FungibleAsset {
         let FungibleStoreManager { extend_ref, delete_ref } = store_manager;
         let store_signer = object::generate_signer_for_extending(&extend_ref);
         let fa_store = object::object_from_delete_ref<FungibleStore>(&delete_ref);
         let fa = fungible_asset::withdraw(&store_signer, fa_store, fungible_asset::balance(fa_store));
         fungible_asset::remove_store(&delete_ref);
         object::delete(delete_ref);
-        (fa, session)
+        fa
     }
 
     public fun finish_fa_receiving_session(
@@ -121,6 +125,15 @@ module aptos_intent::fungible_asset_intent {
 
         primary_fungible_store::deposit(argument.issuer, received_fa);
         intent::finish_intent_session(session, FungibleAssetRecipientWitness {})
+    }
+
+    public entry fun revoke_fa_intent<Args: store + drop>(
+        account: &signer,
+        intent: Object<TradeIntent<FungibleStoreManager, Args>>
+    ) {
+        let store_manager = intent::revoke_intent(account, intent);
+        let fa = destroy_store_manager(store_manager);
+        primary_fungible_store::deposit(signer::address_of(account), fa);
     }
 
     #[test(
@@ -170,5 +183,45 @@ module aptos_intent::fungible_asset_intent {
         finish_fa_receiving_session(session, fa2);
 
         assert!(primary_fungible_store::balance(signer::address_of(aaron), test_token_2) == 5, 1);
+    }
+
+    #[test(
+        aptos_framework = @0x1,
+        creator1 = @0xcafe,
+        creator2 = @0xcaff,
+        aaron = @0xface,
+        offerer = @0xbadd
+    )]
+    fun test_e2e_revoke(
+        aptos_framework: &signer,
+        creator1: &signer,
+        creator2: &signer,
+        aaron: &signer,
+    ) {
+        use aptos_framework::timestamp;
+        use aptos_framework::signer;
+        use aptos_framework::primary_fungible_store;
+
+        timestamp::set_time_has_started_for_testing(aptos_framework);
+        let (creator_ref_1, metadata_1) = fungible_asset::create_test_token(creator1);
+        primary_fungible_store::init_test_metadata_with_primary_store_enabled(&creator_ref_1);
+        let mint_ref_1 = fungible_asset::generate_mint_ref(&creator_ref_1);
+
+        let (creator_ref_2, metadata_2) = fungible_asset::create_test_token(creator2);
+        primary_fungible_store::init_test_metadata_with_primary_store_enabled(&creator_ref_2);
+        let test_token_2 = object::convert(metadata_2);
+
+        let fa1 = fungible_asset::mint(&mint_ref_1, 10);
+        // Register intent to trade 10 FA1 into 5 FA2.
+        let intent = create_fa_to_fa_intent(
+            fa1,
+            test_token_2,
+            5,
+            1,
+            signer::address_of(aaron),
+        );
+
+        revoke_fa_intent(aaron, intent);
+        assert!(primary_fungible_store::balance(signer::address_of(aaron), metadata_1) == 10, 1);
     }
 }
