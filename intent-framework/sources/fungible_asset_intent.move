@@ -1,6 +1,7 @@
 module aptos_intent::fungible_asset_intent {
     use std::error;
     use std::signer;
+    use aptos_framework::event;
     use aptos_framework::fungible_asset::{Self, FungibleAsset, Metadata, FungibleStore};
     use aptos_intent::intent::{Self, TradeSession, TradeIntent};
     use aptos_framework::object::{Self, DeleteRef, ExtendRef, Object};
@@ -25,6 +26,16 @@ module aptos_intent::fungible_asset_intent {
 
     struct FungibleAssetRecipientWitness has drop {}
 
+    #[event]
+    struct LimitOrderEvent has store, drop {
+        source_metadata: Object<Metadata>,
+        source_amount: u64,
+        desired_metadata: Object<Metadata>,
+        desired_amount: u64,
+        issuer: address,
+        expiry_time: u64,
+    }
+
     public fun create_fa_to_fa_intent(
         source_fungible_asset: FungibleAsset,
         desired_metadata: Object<Metadata>,
@@ -32,6 +43,15 @@ module aptos_intent::fungible_asset_intent {
         expiry_time: u64,
         issuer: address,
     ): Object<TradeIntent<FungibleStoreManager, FungibleAssetLimitOrder>> {
+        event::emit(LimitOrderEvent {
+            source_metadata: fungible_asset::asset_metadata(&source_fungible_asset),
+            source_amount: fungible_asset::amount(&source_fungible_asset),
+            desired_metadata,
+            desired_amount,
+            expiry_time,
+            issuer,
+        });
+
         let coin_store_ref = object::create_object(issuer);
         let extend_ref = object::generate_extend_ref(&coin_store_ref);
         let delete_ref = object::generate_delete_ref(&coin_store_ref);
