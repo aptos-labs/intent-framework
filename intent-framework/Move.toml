@@ -10,8 +10,8 @@ aptos_intent = "_"
 aptos_intent = "0x123"
 
 [dependencies.AptosFramework]
-git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "main"
-subdir = "aptos-move/framework/aptos-framework"
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "mainnet"
+subdir = "aptos-framework"
 
 [dev-dependencies]
