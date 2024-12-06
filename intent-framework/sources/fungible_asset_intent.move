@@ -1,5 +1,6 @@
 module aptos_intent::fungible_asset_intent {
     use std::error;
+    use std::signer;
     use aptos_framework::fungible_asset::{Self, FungibleAsset, Metadata, FungibleStore};
     use aptos_intent::intent::{Self, TradeSession, TradeIntent};
     use aptos_framework::object::{Self, DeleteRef, ExtendRef, Object};
@@ -50,6 +51,25 @@ module aptos_intent::fungible_asset_intent {
             issuer,
             FungibleAssetRecipientWitness {},
         )
+    }
+
+    public entry fun create_fa_to_fa_intent_entry(
+        account: &signer,
+        source_metadata: Object<Metadata>,
+        source_amount: u64,
+        desired_metadata: Object<Metadata>,
+        desired_amount: u64,
+        expiry_time: u64,
+        issuer: address,
+    ) {
+        let fa = primary_fungible_store::withdraw(account, source_metadata, source_amount);
+        create_fa_to_fa_intent(
+            fa,
+            desired_metadata,
+            desired_amount,
+            expiry_time,
+            signer::address_of(account),
+        );
     }
 
     public fun start_fa_offering_session<Args: store + drop>(
